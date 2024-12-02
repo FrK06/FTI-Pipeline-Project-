@@ -1,16 +1,38 @@
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
+# Virtual Environment
 venv/
-.env
-.vscode/
-*.log
-.pytest_cache/
-*.egg-info/
-dist/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+
+# Project specific
 test_features/
 test_models/
