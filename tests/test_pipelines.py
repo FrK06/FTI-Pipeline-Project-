@@ -1,3 +1,5 @@
+# FTI-Pipeline-Project--1\tests\test_pipeline.py
+
 import pytest
 import pandas as pd
 import numpy as np
@@ -9,6 +11,17 @@ from src.inference_pipeline import InferencePipeline
 
 @pytest.fixture
 def sample_data():
+    """
+    Creates sample data for testing the ML pipeline components.
+    
+    Generates a pandas DataFrame containing synthetic data with three columns:
+    - col1: Sequential numbers from 0 to 99
+    - col2: Sequential numbers from 100 to 199
+    - target: Alternating binary values (0 and 1)
+    
+    Returns:
+        pd.DataFrame: Sample data frame with predictable test data
+    """
     return pd.DataFrame({
         'col1': range(100),
         'col2': range(100, 200),
@@ -16,6 +29,17 @@ def sample_data():
     })
 
 def test_feature_pipeline(sample_data):
+    """
+    Creates sample data for testing the ML pipeline components.
+    
+    Generates a pandas DataFrame containing synthetic data with three columns:
+    - col1: Sequential numbers from 0 to 99
+    - col2: Sequential numbers from 100 to 199
+    - target: Alternating binary values (0 and 1)
+    
+    Returns:
+        pd.DataFrame: Sample data frame with predictable test data
+    """
     store = FeatureStore(storage_path="test_features")
     pipeline = FeaturePipeline(store)
     
@@ -24,6 +48,21 @@ def test_feature_pipeline(sample_data):
     assert len(features) == len(sample_data)
 
 def test_training_pipeline(sample_data):
+    """
+    Test the model training pipeline end-to-end.
+    
+    Verifies that the training pipeline can:
+    1. Load processed features
+    2. Train a model successfully
+    3. Generate valid performance metrics
+    4. Store model and metadata correctly
+    
+    Args:
+        sample_data (pd.DataFrame): Pytest fixture providing test data
+        
+    Raises:
+        AssertionError: If model training or evaluation fails
+    """
     feature_store = FeatureStore(storage_path="test_features")
     model_registry = ModelRegistry(storage_path="test_models")
     pipeline = TrainingPipeline(feature_store, model_registry)
@@ -36,6 +75,21 @@ def test_training_pipeline(sample_data):
     assert 'feature_importance' in metadata['metrics']
 
 def test_inference_pipeline(sample_data):
+    """
+    Test the model inference pipeline functionality.
+    
+    Verifies that the inference pipeline can:
+    1. Load a trained model
+    2. Make predictions on new data
+    3. Generate valid prediction outputs
+    4. Handle various input scenarios correctly
+    
+    Args:
+        sample_data (pd.DataFrame): Pytest fixture providing test data
+        
+    Raises:
+        AssertionError: If prediction generation or validation fails
+    """
     feature_store = FeatureStore(storage_path="test_features")
     model_registry = ModelRegistry(storage_path="test_models")
     

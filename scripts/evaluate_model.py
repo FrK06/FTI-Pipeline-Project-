@@ -1,10 +1,26 @@
+# FTI-Pipeline-Project--1\scripts\evaluate_model.py
+
 from src.feature_store import FeatureStore
 from src.model_registry import ModelRegistry
 from src.inference_pipeline import InferencePipeline
 import json
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import pandas as pd
 
 def main():
+    """
+    Evaluate the latest trained model's performance.
+    
+    Loads test data and the latest model version, makes predictions,
+    calculates various performance metrics, and verifies if the model
+    meets deployment criteria.
+
+    Returns:
+        None
+
+    Raises:
+        Exception: If model accuracy is below deployment threshold (85%)
+    """
     feature_store = FeatureStore(use_s3=True)
     model_registry = ModelRegistry(use_s3=True)
     pipeline = InferencePipeline(feature_store, model_registry)

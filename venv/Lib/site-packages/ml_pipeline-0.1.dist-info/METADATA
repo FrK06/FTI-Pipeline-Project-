@@ -1,0 +1,9 @@
+Metadata-Version: 2.1
+Name: ml-pipeline
+Version: 0.1
+Requires-Dist: pandas
+Requires-Dist: scikit-learn
+Requires-Dist: boto3
+Requires-Dist: joblib
+Requires-Dist: pytest
+Requires-Dist: numpy

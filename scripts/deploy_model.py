@@ -1,9 +1,31 @@
+# FTI-Pipeline-Project--1\scripts\deploy_model.py
+
 import os
 from src.model_registry import ModelRegistry
 import boto3
 import json
 
 def deploy_to_sagemaker():
+    """
+    Deploy the latest model version to AWS SageMaker.
+    
+    Creates or updates a SageMaker endpoint with the latest trained model,
+    configuring it for production use with specified instance type and count.
+
+    Environment Variables Required:
+        AWS_ACCESS_KEY_ID: AWS credentials
+        AWS_SECRET_ACCESS_KEY: AWS credentials
+        SAGEMAKER_ROLE: IAM role ARN for SageMaker
+        MODEL_BUCKET: S3 bucket containing model artifacts
+        CONTAINER_IMAGE: Docker image for model serving
+
+    Returns:
+        None
+
+    Raises:
+        SageMakerError: If deployment fails
+        EnvironmentError: If required environment variables are missing
+    """
     model_registry = ModelRegistry(use_s3=True)
     sagemaker = boto3.client('sagemaker')
     

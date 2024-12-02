@@ -1,0 +1,58 @@
+name: ML Pipeline CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * *'  # Daily training
+  workflow_dispatch:
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  SAGEMAKER_ROLE: ${{ secrets.SAGEMAKER_ROLE }}
+  MODEL_BUCKET: ${{ secrets.MODEL_BUCKET }}
+  CONTAINER_IMAGE: ${{ secrets.CONTAINER_IMAGE }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run tests
+        run: pytest tests/
+
+  train:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Process features
+        run: python scripts/process_features.py
+      - name: Train model
+        run: python scripts/train_model.py
+      - name: Evaluate model
+        run: python scripts/evaluate_model.py
+
+  deploy:
+    needs: train
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Deploy to SageMaker
+        run: python scripts/deploy_model.py

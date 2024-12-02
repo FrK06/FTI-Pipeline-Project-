@@ -1,8 +1,23 @@
+# FTI-Pipeline-Project--1\scripts\train_model.py
+
 from src.feature_store import FeatureStore
 from src.model_registry import ModelRegistry
 from src.training_pipeline import TrainingPipeline
 
 def main():
+    """
+    Train a new model version using the latest processed features.
+    
+    Coordinates the training process by loading the latest features,
+    training a new model, and storing it in the model registry with
+    a new version number.
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: If training fails or model performance is inadequate
+    """
     # Initialize components
     feature_store = FeatureStore(use_s3=True)
     model_registry = ModelRegistry(use_s3=True)

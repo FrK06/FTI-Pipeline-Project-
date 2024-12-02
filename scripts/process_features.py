@@ -1,8 +1,22 @@
+# FTI-Pipeline-Project--1\scripts\process_feature.py
+
 import pandas as pd
 from src.feature_store import FeatureStore
 from src.feature_pipeline import FeaturePipeline
 
 def main():
+    """
+    Process new raw data into engineered features.
+    
+    Loads raw data, processes it through the feature pipeline,
+    and stores the results in the feature store with a new version.
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: If data validation or processing fails
+    """
     # Initialize components
     feature_store = FeatureStore(use_s3=True)
     pipeline = FeaturePipeline(feature_store)
