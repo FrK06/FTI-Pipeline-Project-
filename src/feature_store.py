@@ -72,32 +72,36 @@ class FeatureStore:
         """Load features and labels for a specific version."""
         try:
             if self.use_s3:
-                response = self.s3.list_objects_v2(Bucket=self.storage_path)
                 print(f"Loading features version {version}")
-                
                 file_key = f"features_v{version}.json"
-                response = self.s3.get_object(
-                    Bucket=self.storage_path,
-                    Key=file_key
-                )
-                data = json.loads(response['Body'].read())
-                
-                # Convert the nested dictionary structure to DataFrame
-                features_dict = data['features']
-                features = pd.DataFrame.from_dict(features_dict)
-                
-                # Convert labels to series
-                labels = pd.Series(data['labels'])
-                
-                return features, labels
+                try:
+                    response = self.s3.get_object(
+                        Bucket=self.storage_path,
+                        Key=file_key
+                    )
+                    data = json.loads(response['Body'].read())
+                except Exception as e:
+                    # For local testing
+                    with open(f"{self.storage_path}/features_v{version}.json", 'r') as f:
+                        data = json.load(f)
             else:
                 with open(f"{self.storage_path}/features_v{version}.json", 'r') as f:
                     data = json.load(f)
-                    features_dict = data['features']
-                    features = pd.DataFrame.from_dict(features_dict)
-                    labels = pd.Series(data['labels'])
-                    return features, labels
-                    
+
+            # Convert the dictionary structure to DataFrame properly
+            features_data = data['features']
+            feature_dict = {}
+            
+            # Extract each feature column from the nested dict
+            for feature_name in features_data:
+                feature_dict[feature_name] = pd.Series(features_data[feature_name])
+            
+            # Create DataFrame with proper orientation
+            features = pd.DataFrame(feature_dict)
+            labels = pd.Series(data['labels'])
+            
+            return features, labels
+            
         except Exception as e:
             print(f"Error loading features: {str(e)}")
             print(f"Version attempting to load: {version}")
