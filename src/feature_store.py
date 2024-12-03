@@ -90,31 +90,36 @@ class FeatureStore:
 
 
     def get_latest_version(self):
-        """
-        Get the latest version number from storage.
-        Handles both numerical and string-based versions.
-        """
-        if self.use_s3:
-            response = self.s3.list_objects_v2(Bucket=self.storage_path)
-            versions = [obj['Key'] for obj in response.get('Contents', [])]
-        else:
-            if not os.path.exists(self.storage_path):
-                return "0"
-            versions = os.listdir(self.storage_path)
-        
-        if not versions:
-            return "0"
-            
+        """Get the latest version number from storage."""
         try:
-            # Try numerical versioning first
-            latest = max([int(v.split('_v')[1].split('.')[0]) 
-                        for v in versions if v.split('_v')[1].split('.')[0].isdigit()])
-            return str(latest)
-        except (ValueError, IndexError):
-            # If numerical versioning fails, return the most recent file by creation time
             if self.use_s3:
-                latest = max(versions, key=lambda x: x)
+                try:
+                    response = self.s3.list_objects_v2(Bucket=self.storage_path)
+                    versions = [obj['Key'] for obj in response.get('Contents', [])]
+                except self.s3.exceptions.NoSuchBucket:
+                    print(f"Creating bucket {self.storage_path}")
+                    self.s3.create_bucket(
+                        Bucket=self.storage_path,
+                        CreateBucketConfiguration={
+                            'LocationConstraint': 'eu-west-2'
+                        }
+                    )
+                    versions = []
             else:
-                latest = max(versions, key=lambda x: os.path.getctime(
-                    os.path.join(self.storage_path, x)))
-            return latest.split('_v')[1].split('.')[0]
+                if not os.path.exists(self.storage_path):
+                    return "0"
+                versions = os.listdir(self.storage_path)
+            
+            if not versions:
+                return "0"
+                
+            try:
+                latest = max([int(v.split('_v')[1].split('.')[0]) 
+                            for v in versions if v.split('_v')[1].split('.')[0].isdigit()])
+                return str(latest)
+            except (ValueError, IndexError):
+                return "0"
+                
+        except Exception as e:
+            print(f"Error in get_latest_version: {str(e)}")
+            return "0"
