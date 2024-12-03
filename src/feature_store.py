@@ -69,25 +69,38 @@ class FeatureStore:
                 json.dump(data, f)
 
     def load_features(self, version: str) -> Tuple[pd.DataFrame, pd.Series]:
-        if self.use_s3:
-            response = self.s3.get_object(
-                Bucket=self.storage_path,
-                Key=f"features_v{version}.json"
-            )
-            data = json.loads(response['Body'].read())
-        else:
-            with open(f"{self.storage_path}/features_v{version}.json", 'r') as f:
-                data = json.load(f)
-        
-        # Reconstruct DataFrame using the stored structure
-        features_data = data['features']['data']
-        columns = data['features']['columns']
-        features = pd.DataFrame(features_data, columns=columns)
-        
-        # Reconstruct labels Series
-        labels = pd.Series(data['labels'], dtype=int)
-        
-        return features, labels
+        """Load features and labels for a specific version."""
+        try:
+            if self.use_s3:
+                # First list what's in the bucket
+                response = self.s3.list_objects_v2(Bucket=self.storage_path)
+                print("Available files in bucket:")
+                for obj in response.get('Contents', []):
+                    print(f"- {obj['Key']}")
+                
+                # Now try to load
+                file_key = f"features_v{version}.json"
+                print(f"\nAttempting to load: {file_key}")
+                
+                response = self.s3.get_object(
+                    Bucket=self.storage_path,
+                    Key=file_key
+                )
+                data = json.loads(response['Body'].read())
+            else:
+                with open(f"{self.storage_path}/features_v{version}.json", 'r') as f:
+                    data = json.load(f)
+            
+            # Convert data back to DataFrame/Series
+            features = pd.DataFrame(data['features'])
+            labels = pd.Series(data['labels'])
+            
+            return features, labels
+            
+        except Exception as e:
+            print(f"Error loading features: {str(e)}")
+            print(f"Version attempting to load: {version}")
+            raise
 
 
     def get_latest_version(self):
