@@ -20,14 +20,14 @@ class FeatureStore:
         use_s3 (bool): Flag to determine if S3 storage should be used
         s3: Boto3 S3 client instance (if use_s3 is True)
     """
-    class FeatureStore:
-        def __init__(self, storage_path: str = "fti-ml-pipeline-models", use_s3: bool = False):
-            self.storage_path = storage_path
-            self.use_s3 = use_s3
-            if use_s3:
-                self.s3 = boto3.client('s3')
-            else:
-                os.makedirs(storage_path, exist_ok=True)
+
+    def __init__(self, storage_path: str = "fti-ml-pipeline-models", use_s3: bool = False):
+        self.storage_path = storage_path
+        self.use_s3 = use_s3
+        if use_s3:
+            self.s3 = boto3.client('s3')
+        else:
+            os.makedirs(storage_path, exist_ok=True)
 
     def save_features(self, features: pd.DataFrame, labels: pd.Series, version: str) -> None:
         """
