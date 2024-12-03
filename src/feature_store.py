@@ -72,34 +72,43 @@ class FeatureStore:
         """Load features and labels for a specific version."""
         try:
             if self.use_s3:
-                # First list what's in the bucket
                 response = self.s3.list_objects_v2(Bucket=self.storage_path)
-                print("Available files in bucket:")
-                for obj in response.get('Contents', []):
-                    print(f"- {obj['Key']}")
+                print(f"Loading features version {version}")
                 
-                # Now try to load
                 file_key = f"features_v{version}.json"
-                print(f"\nAttempting to load: {file_key}")
-                
                 response = self.s3.get_object(
                     Bucket=self.storage_path,
                     Key=file_key
                 )
                 data = json.loads(response['Body'].read())
+                
+                # Convert the nested dictionary structure to DataFrame
+                features_dict = data['features']
+                features = pd.DataFrame.from_dict(features_dict)
+                
+                # Convert labels to series
+                labels = pd.Series(data['labels'])
+                
+                return features, labels
             else:
                 with open(f"{self.storage_path}/features_v{version}.json", 'r') as f:
                     data = json.load(f)
-            
-            # Convert data back to DataFrame/Series
-            features = pd.DataFrame(data['features'])
-            labels = pd.Series(data['labels'])
-            
-            return features, labels
-            
+                    features_dict = data['features']
+                    features = pd.DataFrame.from_dict(features_dict)
+                    labels = pd.Series(data['labels'])
+                    return features, labels
+                    
         except Exception as e:
             print(f"Error loading features: {str(e)}")
             print(f"Version attempting to load: {version}")
+            if self.use_s3:
+                try:
+                    response = self.s3.list_objects_v2(Bucket=self.storage_path)
+                    print("Available files in bucket:")
+                    for obj in response.get('Contents', []):
+                        print(f"- {obj['Key']}")
+                except Exception as list_error:
+                    print(f"Error listing bucket contents: {str(list_error)}")
             raise
 
 
