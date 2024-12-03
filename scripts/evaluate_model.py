@@ -21,8 +21,8 @@ def main():
     Raises:
         Exception: If model accuracy is below deployment threshold (85%)
     """
-    feature_store = FeatureStore(use_s3=True)
-    model_registry = ModelRegistry(use_s3=True)
+    feature_store = FeatureStore(storage_path="fti-ml-pipeline-models", use_s3=True)
+    model_registry = ModelRegistry(storage_path="fti-ml-pipeline-models", use_s3=True)
     pipeline = InferencePipeline(feature_store, model_registry)
     
     # Load test data

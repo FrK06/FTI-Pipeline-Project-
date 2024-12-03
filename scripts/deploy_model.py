@@ -26,7 +26,7 @@ def deploy_to_sagemaker():
         SageMakerError: If deployment fails
         EnvironmentError: If required environment variables are missing
     """
-    model_registry = ModelRegistry(use_s3=True)
+    model_registry = ModelRegistry(storage_path="fti-ml-pipeline-models", use_s3=True)
     sagemaker = boto3.client('sagemaker')
     
     # Get latest model version
