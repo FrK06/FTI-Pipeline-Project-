@@ -15,7 +15,7 @@ class ModelRegistry:
     It handles model storage and retrieval from either local filesystem
     or S3 storage.
     """
-    def __init__(self, storage_path: str = "model_registry", use_s3: bool = False):
+    def __init__(self, storage_path: str = "fti-ml-pipeline-models", use_s3: bool = False):
         self.storage_path = storage_path
         self.use_s3 = use_s3
         self.logger = PipelineLogger(
