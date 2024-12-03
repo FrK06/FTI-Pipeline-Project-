@@ -113,34 +113,48 @@ class FeatureStore:
     def get_latest_version(self):
         """Get the latest version number from storage."""
         try:
+            self.logger.logger.info("Retrieving latest feature version")
+            
             if self.use_s3:
                 try:
                     response = self.s3.list_objects_v2(Bucket=self.storage_path)
-                    versions = [obj['Key'] for obj in response.get('Contents', [])]
-                except self.s3.exceptions.NoSuchBucket:
-                    print(f"Creating bucket {self.storage_path}")
-                    self.s3.create_bucket(
-                        Bucket=self.storage_path,
-                        CreateBucketConfiguration={
-                            'LocationConstraint': 'eu-west-2'
-                        }
-                    )
+                    # Only consider feature files
+                    versions = [obj['Key'] for obj in response.get('Contents', [])
+                            if obj['Key'].startswith('features_v') and obj['Key'].endswith('.json')]
+                except Exception as e:
+                    self.logger.logger.error(f"Error accessing S3: {e}")
                     versions = []
             else:
                 if not os.path.exists(self.storage_path):
+                    self.logger.logger.info("No feature store found, returning version 0")
                     return "0"
-                versions = os.listdir(self.storage_path)
+                try:
+                    versions = [f for f in os.listdir(self.storage_path) 
+                            if f.startswith('features_v') and f.endswith('.json')]
+                except Exception as e:
+                    self.logger.logger.error(f"Error accessing local storage: {e}")
+                    versions = []
             
             if not versions:
+                self.logger.logger.info("No feature versions found, returning version 0")
+                return "0"
+            
+            # Extract version numbers from filenames
+            version_numbers = []
+            for v in versions:
+                try:
+                    version_str = v.split('_v')[1].split('.')[0]
+                    version_numbers.append(int(version_str))
+                except (IndexError, ValueError):
+                    continue
+            
+            if not version_numbers:
                 return "0"
                 
-            try:
-                latest = max([int(v.split('_v')[1].split('.')[0]) 
-                            for v in versions if v.split('_v')[1].split('.')[0].isdigit()])
-                return str(latest)
-            except (ValueError, IndexError):
-                return "0"
-                
+            latest = str(max(version_numbers))
+            self.logger.logger.info(f"Latest feature version found: {latest}")
+            return latest
+            
         except Exception as e:
-            print(f"Error in get_latest_version: {str(e)}")
+            self.logger.logger.error(f"Error in get_latest_version: {str(e)}")
             return "0"
