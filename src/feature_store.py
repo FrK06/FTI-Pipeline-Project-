@@ -6,6 +6,7 @@ from datetime import datetime
 import os
 import boto3
 from typing import Tuple, Dict, Any
+from src.utils.logging_utils import PipelineLogger
 
 
 class FeatureStore:
@@ -24,6 +25,12 @@ class FeatureStore:
     def __init__(self, storage_path: str = "fti-ml-pipeline-models", use_s3: bool = False):
         self.storage_path = storage_path
         self.use_s3 = use_s3
+        # Initialize logger
+        self.logger = PipelineLogger(
+            name="FeatureStore",
+            log_file="logs/feature_store.log"
+        )
+        
         if use_s3:
             self.s3 = boto3.client('s3')
         else:
