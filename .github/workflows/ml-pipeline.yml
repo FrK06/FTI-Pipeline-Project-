@@ -87,12 +87,39 @@ jobs:
         
       - name: Train model
         run: python scripts/train_model.py
-        
-      - name: Evaluate model
+
+  evaluate:
+    needs: train
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+      - name: Create directories
+        run: |
+          mkdir -p data
+          mkdir -p logs
+      - name: Setup data
+        run: python setup_test_data.py
+      - name: Process features
+        run: python scripts/process_features.py
+      - name: Evaluate Model
         run: python scripts/evaluate_model.py
+      - name: Upload metrics
+        uses: actions/upload-artifact@v2
+        with:
+          name: metrics
+          path: metrics.json
 
   deploy:
-    needs: train
+    needs: evaluate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -114,6 +141,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -e .
+          
+      - name: Download metrics
+        uses: actions/download-artifact@v2
+        with:
+          name: metrics
           
       - name: Deploy to SageMaker
         run: python scripts/deploy_model.py
