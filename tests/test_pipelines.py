@@ -71,7 +71,9 @@ def test_training_pipeline(sample_data):
     feature_pipeline.process_data(sample_data, "test")
     
     model, metadata = pipeline.train("test", "test")
-    assert 'accuracy' in metadata['metrics']
+    
+    # Check metrics in test split
+    assert 'accuracy' in metadata['metrics']['test']
     assert 'feature_importance' in metadata['metrics']
 
 def test_inference_pipeline(sample_data):

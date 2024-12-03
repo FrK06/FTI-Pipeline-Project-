@@ -81,14 +81,12 @@ def test_feature_pipeline_edge_cases(edge_case_data):
     # Verify feature ranges are reasonable
     assert features.abs().max().max() < 1e10, "Feature values too extreme"
 
+# In tests/deep_test.py
 def test_feature_pipeline_invalid_data(missing_data):
-    """
-    Tests feature pipeline's error handling with invalid data.
-    """
     store = FeatureStore(storage_path="test_features")
     pipeline = FeaturePipeline(store)
     
-    with pytest.raises(ValueError, match="Data contains null values"):
+    with pytest.raises(ValueError, match="Null values found in columns:"):
         pipeline.validate_data(missing_data)
 
 # Define DummyModel at module level for proper pickling

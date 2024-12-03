@@ -2,9 +2,10 @@
 from typing import Tuple, Dict, Any
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from src.feature_store import FeatureStore
 from src.model_registry import ModelRegistry
+from src.utils.logging_utils import PipelineLogger, error_handler, MetricsLogger
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -31,15 +32,24 @@ class TrainingPipeline:
             max_depth=10,
             random_state=42
         )
-        
+        self.logger = PipelineLogger(
+            name="TrainingPipeline",
+            log_file="logs/training_pipeline.log"
+        )
+        self.metrics_logger = MetricsLogger(self.logger)
+
+    @error_handler(logger=PipelineLogger(name="TrainingPipeline"))
     def train(self, feature_version: str, model_version: str) -> Tuple[Any, Dict]:
         """Train a new model using specified feature version."""
         try:
             # Load and validate data
+            self.logger.logger.info(f"Starting model training for version {model_version}")
             features, labels = self.feature_store.load_features(feature_version)
+            
             if len(features) == 0 or len(labels) == 0:
                 raise ValueError(f"No data found for feature version {feature_version}")
-            print(f"Loaded {len(features)} samples for training")
+            
+            self.logger.logger.info(f"Loaded {len(features)} samples for training")
             
             # First split the data, then scale - this is crucial for preventing data leakage
             X_train, X_test, y_train, y_test = train_test_split(
@@ -63,7 +73,7 @@ class TrainingPipeline:
                 index=X_test.index
             )
             
-            print(f"Training split: {len(X_train)} samples, Test split: {len(X_test)} samples")
+            self.logger.logger.info(f"Training split: {len(X_train)} samples, Test split: {len(X_test)} samples")
             
             # Train model with optimized parameters
             self.model = RandomForestClassifier(
@@ -75,9 +85,13 @@ class TrainingPipeline:
                 random_state=42
             )
             
-            self.model.fit(X_train_scaled, y_train)
+            # Log model parameters
+            self.logger.logger.info(f"Training model with parameters: {self.model.get_params()}")
             
-            # Calculate accuracies
+            self.model.fit(X_train_scaled, y_train)
+            self.logger.logger.info("Model training completed")
+            
+            # Calculate metrics
             train_predictions = self.model.predict(X_train_scaled)
             test_predictions = self.model.predict(X_test_scaled)
             
@@ -94,20 +108,34 @@ class TrainingPipeline:
             full_predictions = self.model.predict(features_scaled)
             full_accuracy = float(accuracy_score(labels, full_predictions))
             
-            print(f"Train accuracy: {train_accuracy:.3f}")
-            print(f"Test accuracy: {test_accuracy:.3f}")
-            print(f"Full dataset accuracy: {full_accuracy:.3f}")
+            self.logger.logger.info(
+                f"Model performance - Train: {train_accuracy:.3f}, "
+                f"Test: {test_accuracy:.3f}, Full: {full_accuracy:.3f}"
+            )
             
-            # Store metrics
+            # Store comprehensive metrics
             metrics = {
-                'train': {'accuracy': train_accuracy},
-                'test': {'accuracy': test_accuracy},
+                'train': {
+                    'accuracy': train_accuracy,
+                    'precision': float(precision_score(y_train, train_predictions)),
+                    'recall': float(recall_score(y_train, train_predictions)),
+                    'f1': float(f1_score(y_train, train_predictions))
+                },
+                'test': {
+                    'accuracy': test_accuracy,
+                    'precision': float(precision_score(y_test, test_predictions)),
+                    'recall': float(recall_score(y_test, test_predictions)),
+                    'f1': float(f1_score(y_test, test_predictions))
+                },
                 'full_dataset': {'accuracy': full_accuracy},
                 'feature_importance': dict(zip(
                     features.columns,
                     self.model.feature_importances_.tolist()
                 ))
             }
+            
+            # Log training metrics
+            self.metrics_logger.log_training_metrics(metrics, model_version)
             
             # Create metadata
             metadata = {
@@ -119,7 +147,9 @@ class TrainingPipeline:
                 'timestamp': str(datetime.now()),
                 'data_split': {
                     'train_size': len(X_train),
-                    'test_size': len(X_test)
+                    'test_size': len(X_test),
+                    'train_distribution': pd.Series(y_train).value_counts().to_dict(),
+                    'test_distribution': pd.Series(y_test).value_counts().to_dict()
                 },
                 'scaler_params': {
                     'mean_': self.scaler.mean_.tolist(),
@@ -134,13 +164,17 @@ class TrainingPipeline:
             }
             self.model_registry.save_model(model_bundle, metadata, model_version)
             
-            print(f"Model training completed successfully.")
+            self.logger.logger.info(f"Model version {model_version} saved successfully")
             return self.model, metadata
             
         except Exception as e:
-            print(f"Error during training: {str(e)}")
+            self.logger.log_error(e, {
+                'feature_version': feature_version,
+                'model_version': model_version,
+                'step': 'model_training'
+            })
             raise
-        
+            
     def _evaluate_model(self, X: pd.DataFrame, y: pd.Series, split_name: str) -> Dict:
         """
         Evaluates model performance on given data split.
@@ -153,14 +187,24 @@ class TrainingPipeline:
         Returns:
             Dictionary containing accuracy metrics
         """
-        # Get predictions
-        y_pred = self.model.predict(X)
-        
-        # Calculate accuracy using sklearn's accuracy_score
-        acc = float(accuracy_score(y, y_pred))
-        print(f"{split_name.capitalize()} accuracy: {acc:.3f}")
-        
-        return {'accuracy': acc}
+        try:
+            # Get predictions
+            y_pred = self.model.predict(X)
+            
+            # Calculate metrics
+            metrics = {
+                'accuracy': float(accuracy_score(y, y_pred)),
+                'precision': float(precision_score(y, y_pred)),
+                'recall': float(recall_score(y, y_pred)),
+                'f1': float(f1_score(y, y_pred))
+            }
+            
+            self.logger.logger.info(f"{split_name.capitalize()} metrics: {metrics}")
+            return metrics
+            
+        except Exception as e:
+            self.logger.log_error(e, {'split': split_name, 'step': 'model_evaluation'})
+            raise
     
     def _get_feature_importance(self, feature_names: list) -> Dict:
         """
@@ -172,7 +216,14 @@ class TrainingPipeline:
         Returns:
             Dictionary mapping feature names to importance values
         """
-        if hasattr(self.model, 'feature_importances_'):
-            importance_values = self.model.feature_importances_.tolist()
-            return dict(zip(feature_names, importance_values))
-        return {}
+        try:
+            if hasattr(self.model, 'feature_importances_'):
+                importance_values = self.model.feature_importances_.tolist()
+                importance_dict = dict(zip(feature_names, importance_values))
+                self.logger.logger.info("Feature importance calculated successfully")
+                return importance_dict
+            return {}
+            
+        except Exception as e:
+            self.logger.log_error(e, {'step': 'feature_importance_calculation'})
+            raise

@@ -20,3 +20,7 @@ test_models/
 # IDE
 .vscode/
 .idea/
+
+# Logs
+logs/
+*.log
