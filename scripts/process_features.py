@@ -17,11 +17,11 @@ def main():
     Raises:
         ValueError: If data validation or processing fails
     """
-    # Initialize components
-    feature_store = FeatureStore(use_s3=True)
+    # Initialize components with correct bucket name
+    feature_store = FeatureStore(storage_path="fti-ml-pipeline-models", use_s3=True)
     pipeline = FeaturePipeline(feature_store)
     
-    # Load raw data (replace with your data source)
+    # Load raw data
     raw_data = pd.read_csv('data/raw_data.csv')
     
     # Get new version
