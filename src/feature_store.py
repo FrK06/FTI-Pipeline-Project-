@@ -30,46 +30,41 @@ class FeatureStore:
             os.makedirs(storage_path, exist_ok=True)
 
     def save_features(self, features: pd.DataFrame, labels: pd.Series, version: str) -> None:
-        """
-        Save processed features and their labels with version control.
-
-        Args:
-            features (pd.DataFrame): Processed feature data
-            labels (pd.Series): Target labels corresponding to features
-            version (str): Version identifier for this feature set
-
-        Returns:
-            None
-
-        Raises:
-            S3UploadFailedError: If S3 upload fails when use_s3 is True
-            IOError: If local file writing fails when use_s3 is False
-        """
-        # Convert features to a nested dictionary format that preserves structure
-        features_dict = {
-            'data': features.to_dict(orient='list'),  # Store actual feature data
-            'columns': features.columns.tolist()       # Store column names separately
-        }
-        
+        """Save processed features and their labels with version control."""
         data = {
-            'features': features_dict,
+            'features': {col: features[col].tolist() for col in features.columns},
             'labels': labels.tolist(),
             'version': version,
             'timestamp': str(datetime.now())
         }
         
-        if self.use_s3:
-            self.s3.put_object(
-                Bucket=self.storage_path,
-                Key=f"features_v{version}.json",
-                Body=json.dumps(data)
-            )
-        else:
-            with open(f"{self.storage_path}/features_v{version}.json", 'w') as f:
-                json.dump(data, f)
+        try:
+            if self.use_s3:
+                self.s3.put_object(
+                    Bucket=self.storage_path,
+                    Key=f"features_v{version}.json",
+                    Body=json.dumps(data)
+                )
+            else:
+                with open(f"{self.storage_path}/features_v{version}.json", 'w') as f:
+                    json.dump(data, f)
+                    
+        except Exception as e:
+            print(f"Error saving features: {str(e)}")
+            raise
 
     def load_features(self, version: str) -> Tuple[pd.DataFrame, pd.Series]:
-        """Load features and labels for a specific version."""
+        """Load features and labels for a specific version.
+        
+        Args:
+            version (str): Version of features to load
+            
+        Returns:
+            Tuple[pd.DataFrame, pd.Series]: Features and labels
+            
+        Raises:
+            ValueError: If lengths don't match or file not found
+        """
         try:
             if self.use_s3:
                 print(f"Loading features version {version}")
@@ -88,24 +83,10 @@ class FeatureStore:
                 with open(f"{self.storage_path}/features_v{version}.json", 'r') as f:
                     data = json.load(f)
 
-            # Handle feature data properly
-            features_dict = data['features']
-            feature_columns = list(features_dict.keys())
+            # Load features directly as DataFrame
+            features = pd.DataFrame(data['features'])
             
-            # Create a dictionary where each key is a column name and value is the data
-            processed_dict = {}
-            for col in feature_columns:
-                if isinstance(features_dict[col], dict):
-                    # If the data is stored as {index: value} dict
-                    processed_dict[col] = pd.Series(features_dict[col]).sort_index().values
-                else:
-                    # If the data is stored as a list
-                    processed_dict[col] = features_dict[col]
-            
-            # Create DataFrame with processed data
-            features = pd.DataFrame(processed_dict)
-            
-            # Ensure labels are properly aligned
+            # Convert labels to series
             labels = pd.Series(data['labels'])
             
             # Verify lengths match
@@ -113,7 +94,6 @@ class FeatureStore:
                 raise ValueError(f"Mismatched lengths: features({len(features)}) vs labels({len(labels)})")
                 
             print(f"Loaded features shape: {features.shape}, labels shape: {labels.shape}")
-            
             return features, labels
             
         except Exception as e:
