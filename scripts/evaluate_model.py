@@ -1,4 +1,4 @@
-# FTI-Pipeline-Project--1\scripts\evaluate_model.py
+# scripts/evaluate_model.py
 
 from src.feature_store import FeatureStore
 from src.model_registry import ModelRegistry
@@ -10,26 +10,19 @@ import pandas as pd
 def main():
     """
     Evaluate the latest trained model's performance.
-    
-    Loads test data and the latest model version, makes predictions,
-    calculates various performance metrics, and verifies if the model
-    meets deployment criteria.
-
-    Returns:
-        None
-
-    Raises:
-        Exception: If model accuracy is below deployment threshold (85%)
     """
+    # Initialize with S3 storage
     feature_store = FeatureStore(storage_path="fti-ml-pipeline-models", use_s3=True)
     model_registry = ModelRegistry(storage_path="fti-ml-pipeline-models", use_s3=True)
     pipeline = InferencePipeline(feature_store, model_registry)
     
-    # Load test data
-    X_test = pd.read_csv('data/test_features.csv')
-    y_test = pd.read_csv('data/test_labels.csv')
+    # Get latest feature version
+    feature_version = feature_store.get_latest_version()
     
-    # Get latest model
+    # Load test data from feature store
+    X_test, y_test = feature_store.load_features(feature_version)
+    
+    # Get latest model version
     model_version = model_registry.get_latest_version()
     
     # Make predictions
@@ -46,6 +39,10 @@ def main():
     # Save metrics
     with open('metrics.json', 'w') as f:
         json.dump(metrics, f)
+    
+    print(f"Model Evaluation Results:")
+    for metric, value in metrics.items():
+        print(f"{metric}: {value:.3f}")
     
     # Check deployment criteria
     if metrics['accuracy'] < 0.85:
