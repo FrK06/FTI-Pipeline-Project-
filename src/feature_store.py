@@ -88,17 +88,31 @@ class FeatureStore:
                 with open(f"{self.storage_path}/features_v{version}.json", 'r') as f:
                     data = json.load(f)
 
-            # Convert the dictionary structure to DataFrame properly
-            features_data = data['features']
-            feature_dict = {}
+            # Handle feature data properly
+            features_dict = data['features']
+            feature_columns = list(features_dict.keys())
             
-            # Extract each feature column from the nested dict
-            for feature_name in features_data:
-                feature_dict[feature_name] = pd.Series(features_data[feature_name])
+            # Create a dictionary where each key is a column name and value is the data
+            processed_dict = {}
+            for col in feature_columns:
+                if isinstance(features_dict[col], dict):
+                    # If the data is stored as {index: value} dict
+                    processed_dict[col] = pd.Series(features_dict[col]).sort_index().values
+                else:
+                    # If the data is stored as a list
+                    processed_dict[col] = features_dict[col]
             
-            # Create DataFrame with proper orientation
-            features = pd.DataFrame(feature_dict)
+            # Create DataFrame with processed data
+            features = pd.DataFrame(processed_dict)
+            
+            # Ensure labels are properly aligned
             labels = pd.Series(data['labels'])
+            
+            # Verify lengths match
+            if len(features) != len(labels):
+                raise ValueError(f"Mismatched lengths: features({len(features)}) vs labels({len(labels)})")
+                
+            print(f"Loaded features shape: {features.shape}, labels shape: {labels.shape}")
             
             return features, labels
             
